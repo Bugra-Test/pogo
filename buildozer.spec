@@ -14,7 +14,7 @@ android.ndk = 27c
 android.accept_sdk_license = True
 android.add_src = android_src
 android.permissions = BLUETOOTH,BLUETOOTH_ADMIN,BLUETOOTH_ADVERTISE,BLUETOOTH_CONNECT,ACCESS_FINE_LOCATION
-android.archs = arm64-v8a,armeabi-v7a
+android.archs = arm64-v8a
 android.allow_backup = False
 android.enable_androidx = True
 
