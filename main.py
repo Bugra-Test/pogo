@@ -1,113 +1,122 @@
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.utils import platform
 
-if platform == "android":
+SERVICE_UUID = "0000bbef-0000-1000-8000-00805f9b34fb"
+RX_UUID = "0000bbf0-0000-1000-8000-00805f9b34fb"
+TX_UUID = "0000bbf1-0000-1000-8000-00805f9b34fb"
+
+
+def android_ble_class():
+    if platform != "android":
+        raise RuntimeError("BLE yalnızca Android'de kullanılabilir.")
     from jnius import autoclass
-    from android.permissions import request_permissions, check_permission, Permission
-    BlePeripheral = autoclass("com.example.virtualpogoplus.BlePeripheral")
-    PythonActivity = autoclass("org.kivy.android.PythonActivity")
-else:
-    BlePeripheral = None
-    PythonActivity = None
-
-ANDROID_PERMS = []
-if platform == "android":
-    # Android 12+ requires these for BLE advertising/connection.
-    ANDROID_PERMS = [
-        Permission.BLUETOOTH_ADVERTISE,
-        Permission.BLUETOOTH_CONNECT,
-    ]
+    return autoclass("com.example.virtualpogoplus.BlePeripheral")
 
 
-class VirtualPoGoService:
-    SERVICE_UUID = "7e400001-b5a3-f393-e0a9-e50e24dcca9e"
-    RX_UUID = "7e400002-b5a3-f393-e0a9-e50e24dcca9e"
-    TX_UUID = "7e400003-b5a3-f393-e0a9-e50e24dcca9e"
-
-    def __init__(self):
-        self.running = False
-        self.peripheral = None
-
-    def start(self):
-        if platform != "android":
-            raise RuntimeError("BLE peripheral mode requires Android.")
-
-        request_permissions(ANDROID_PERMS)
-
-        # Permission dialogs are asynchronous on Android. If the user has not
-        # granted them yet, start() may be retried from the UI.
-        for perm in ANDROID_PERMS:
-            if not check_permission(perm):
-                raise RuntimeError("Bluetooth izni verilmedi. İzinleri verip tekrar deneyin.")
-
-        activity = PythonActivity.mActivity
-        self.peripheral = BlePeripheral(
-            activity,
-            "Virtual-PoGo-Plus",
-            self.SERVICE_UUID,
-            self.RX_UUID,
-            self.TX_UUID,
-        )
-        if not self.peripheral.start():
-            self.peripheral = None
-            raise RuntimeError(
-                "BLE başlatılamadı. Bluetooth açık ve cihaz BLE Peripheral destekliyor mu?"
-            )
-        self.running = True
-        return "BLE Advertising + GATT aktif"
-
-    def stop(self):
-        if self.peripheral is not None:
-            self.peripheral.stop()
-        self.peripheral = None
-        self.running = False
-
-
-class PoGoAutoCatchApp(App):
-    title = "Virtual PoGo Plus"
-
+class VirtualPoGoPlusApp(App):
     def build(self):
-        self.service = VirtualPoGoService()
-
-        root = BoxLayout(orientation="vertical", padding=24, spacing=16)
+        self.ble = None
+        self.running = False
         self.status = Label(
-            text="Durum: Beklemede\nBLE cihazı başlatılmadı.",
+            text="Durum: Hazır\nAndroid 12+ Bluetooth izinleri bekleniyor",
             halign="center",
             valign="middle",
+            font_size="18sp",
         )
-        root.add_widget(self.status)
+        self.status.bind(size=lambda *_: setattr(self.status, "text_size", self.status.size))
 
-        self.toggle = Button(
+        self.button = Button(
             text="Sanal BLE Cihazını Başlat",
-            size_hint=(1, 0.25),
+            size_hint_y=None,
+            height=80,
+            font_size="19sp",
         )
-        self.toggle.bind(on_press=self.toggle_service)
-        root.add_widget(self.toggle)
+        self.button.bind(on_release=self.toggle)
 
+        root = BoxLayout(orientation="vertical", padding=24, spacing=18)
+        root.add_widget(self.status)
+        root.add_widget(self.button)
         return root
 
-    def toggle_service(self, _):
+    def on_start(self):
+        if platform != "android":
+            self.status.text = "Durum: Android cihaz gerekli"
+            self.button.disabled = True
+            return
+        Clock.schedule_once(self.prepare_android, 0.25)
+
+    def prepare_android(self, _dt):
         try:
-            if not self.service.running:
-                msg = self.service.start()
-                self.status.text = "Durum: AKTİF\n" + msg + "\nAd: Virtual-PoGo-Plus"
-                self.toggle.text = "Durdur"
-            else:
-                self.service.stop()
-                self.status.text = "Durum: Durduruldu"
-                self.toggle.text = "Sanal BLE Cihazını Başlat"
+            from android.permissions import request_permissions, Permission
+            permissions = [
+                Permission.BLUETOOTH_ADVERTISE,
+                Permission.BLUETOOTH_CONNECT,
+            ]
+            # ACCESS_FINE_LOCATION yalnızca eski Android BLE tarama senaryolarında gerekir.
+            # Advertising/GATT için Android 12+ tarafında Bluetooth izinleri esas alınır.
+            request_permissions(permissions, self.permission_callback)
         except Exception as exc:
-            self.status.text = "Hata:\n" + str(exc)
+            self.status.text = f"İzin ekranı başlatılamadı:\n{type(exc).__name__}: {exc}"
+
+    def permission_callback(self, permissions, grants):
+        # Kullanıcı izin vermezse uygulama kapanmaz; ekranda açıklama gösterir.
+        if all(grants):
+            self.status.text = "Durum: Hazır\nBluetooth izinleri verildi."
+        else:
+            self.status.text = "Durum: Bluetooth izinleri eksik.\nAyarlar'dan izinleri verin."
+
+    def toggle(self, _instance):
+        if self.running:
+            self.stop_ble()
+        else:
+            self.start_ble()
+
+    def start_ble(self):
+        try:
+            BlePeripheral = android_ble_class()
+            if self.ble is None:
+                self.ble = BlePeripheral()
+
+            result = self.ble.start(
+                "Virtual-PoGo-Plus",
+                SERVICE_UUID,
+                RX_UUID,
+                TX_UUID,
+            )
+            if result:
+                self.running = True
+                self.status.text = (
+                    "Durum: BLE + GATT AKTİF\n"
+                    "Cihaz adı: Virtual-PoGo-Plus\n"
+                    "BLE tarayıcı ile arayabilirsiniz."
+                )
+                self.button.text = "Sanal Cihazı Durdur"
+            else:
+                self.status.text = "BLE başlatılamadı.\nLogcat çıktısını kontrol edin."
+        except Exception as exc:
+            self.status.text = f"BLE başlatma hatası:\n{type(exc).__name__}: {exc}"
+
+    def stop_ble(self):
+        try:
+            if self.ble is not None:
+                self.ble.stop()
+            self.running = False
+            self.status.text = "Durum: Durduruldu."
+            self.button.text = "Sanal BLE Cihazını Başlat"
+        except Exception as exc:
+            self.status.text = f"Durdurma hatası:\n{type(exc).__name__}: {exc}"
 
     def on_stop(self):
         try:
-            self.service.stop()
+            if self.ble is not None:
+                self.ble.stop()
         except Exception:
             pass
 
 
 if __name__ == "__main__":
-    PoGoAutoCatchApp().run()
+    VirtualPoGoPlusApp().run()

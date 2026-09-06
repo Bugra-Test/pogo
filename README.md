@@ -1,53 +1,62 @@
-# Virtual PoGo Plus — GitHub APK build
+# Virtual PoGo Plus V2
 
-Bu sürüm GitHub Actions üzerinden APK üretmek için düzenlenmiştir.
+Android için temiz bir BLE peripheral/GATT test projesidir. Proje, telefonun BLE advertising yapmasını ve bir GATT servisinin yayınlanmasını sağlar.
 
-## Neden önceki APK açılışta kapanıyordu?
+> **Önemli:** Bu proje tek başına Pokémon GO'nun gerçek GO Plus cihazı tarafından doğrulanmasını garanti etmez. Gerçek cihaz protokolü ve cihaz-spesifik kimlik doğrulama materyali bu projeye dahil değildir.
 
-Önceki projede `main.py` şu Java sınıfını daha uygulama başlarken yüklemeye çalışıyordu:
+## V2'de düzeltilenler
 
-`com.example.virtualpogoplus.BlePeripheral`
+- Uygulama açılırken Java BLE sınıfı yüklenmez.
+- BLE Java sınıfı yalnızca Başlat düğmesine basılınca yüklenir.
+- Android 12+ Bluetooth izinleri uygulama içinde istenir.
+- Gerçek `BluetoothLeAdvertiser.startAdvertising()` kullanılır.
+- Gerçek `BluetoothGattServer` oluşturulur.
+- BLE reklamı durdurulabilir.
+- Java hataları Python tarafında yakalanır; mümkün olduğunca loading ekranında sessiz çökme yerine hata metni gösterilir.
+- GitHub Actions ile APK üretimi eklenmiştir.
+- Android API 36 / arm64-v8a hedeflenmiştir.
 
-Fakat yüklenen ZIP içinde `android_src/.../BlePeripheral.java` dosyası yoktu. Bu nedenle `autoclass()` başarısız olduğunda uygulama Kivy ekranını açamadan kapanabiliyordu.
+## GitHub'da APK oluşturma
 
-Bu sürümde Java sınıfı gerçekten projeye dahil edilmiştir.
-
-## Android sürümü uyarısı
-
-`android.api = 36` kullanılır. Buildozer/p4a güncel Android API hedefiyle derleme yapar. Minimum API 26'dır.
-
-## GitHub'da APK üretme
-
-1. Bu klasörün tamamını bir GitHub repository'sine yükleyin.
+1. Bu klasörü yeni bir GitHub repository'sine yükleyin.
 2. `Actions` sekmesine girin.
 3. `Build Android APK` workflow'unu seçin.
-4. `Run workflow` ile elle başlatabilirsiniz.
-5. İşlem bittiğinde workflow içindeki `VirtualPoGoPlus-debug` artifact'ini indirin.
+4. `Run workflow` ile çalıştırın.
+5. İşlem tamamlanınca `VirtualPoGoPlus-V2-debug` artifact'ini indirin.
 
-Push yaptığınızda da workflow otomatik çalışır.
+Workflow ayrıca `main` veya `master` branch'ine push yapıldığında otomatik çalışır.
 
-## Telefon testi
+## Telefonda test
 
-APK'yı kurduktan sonra:
+1. APK'yı kurun.
+2. Bluetooth'u açın.
+3. Uygulamayı açın.
+4. İstenen Bluetooth izinlerini verin.
+5. `Sanal BLE Cihazını Başlat` düğmesine basın.
+6. Bir BLE tarayıcı uygulamasından `Virtual-PoGo-Plus` cihazını arayın.
 
-1. Bluetooth'u açın.
-2. Uygulamayı açın.
-3. İstenen Bluetooth izinlerini verin.
-4. `Sanal BLE Cihazını Başlat` düğmesine basın.
-5. Başka bir BLE scanner ile `Virtual-PoGo-Plus` adını arayın.
-6. Özel GATT servis UUID'si:
-   `7e400001-b5a3-f393-e0a9-e50e24dcca9e`
+Android'in normal Bluetooth eşleştirme ekranı BLE GATT cihazlarını her zaman göstermeyebilir. Test için BLE scanner kullanılması önerilir.
 
-## Önemli
+## Test UUID'leri
 
-Bu proje gerçek BLE peripheral + GATT test cihazıdır. Aynı UUID'yi kullanmak tek başına Pokémon GO Plus cihazının özel protokolünü veya kimlik doğrulamasını oluşturmaz. Gerçek ticari cihaz protokolünü taklit eden kimlik doğrulama/anahtar materyali bu projeye dahil edilmemiştir.
+Service:
+`0000bbef-0000-1000-8000-00805f9b34fb`
 
-## Yerel debug
+RX:
+`0000bbf0-0000-1000-8000-00805f9b34fb`
 
-GitHub yerine WSL/Linux üzerinde test etmek isterseniz:
+TX:
+`0000bbf1-0000-1000-8000-00805f9b34fb`
+
+RX/TX UUID'leri bu V2 projesinin test characteristic'leridir; gerçek GO Plus protokolü oldukları varsayılmamalıdır.
+
+## Yerel derleme
+
+Linux/WSL ortamında:
 
 ```bash
-buildozer android debug deploy run logcat
+pip install "cython<3" buildozer
+buildozer -v android debug
 ```
 
-Uygulama açılışta kapanırsa Android logcat'teki `FATAL EXCEPTION`, `AndroidRuntime` ve `Python` satırları asıl hata nedenini gösterir.
+İlk derleme Android SDK/NDK bileşenlerini indirebilir ve uzun sürebilir.
