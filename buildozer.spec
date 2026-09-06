@@ -5,7 +5,7 @@ package.domain = com.example
 source.dir = .
 source.include_exts = py,json,md,java
 version = 0.1.0
-requirements = python3==3.11.9,kivy
+requirements = python3,kivy,certifi,chardet,filetype,idna,requests,six,urllib3
 orientation = portrait
 fullscreen = 0
 android.api = 35
