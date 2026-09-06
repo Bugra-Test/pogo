@@ -1,5 +1,10 @@
-.venv/
-__pycache__/
-*.pyc
+# Build artifacts
 .buildozer/
 bin/
+__pycache__/
+*.pyc
+.venv/
+venv/
+.idea/
+*.iml
+device_keys.json
