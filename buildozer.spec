@@ -32,6 +32,13 @@ android.accept_sdk_license = True
 #   buildozer android debug
 android.add_src = android_src
 android.archs = arm64-v8a
+
+# BlePeripheral.java gibi özel Java sınıflarının derlemeye kesin olarak
+# dahil edilmesini garantiler (android.add_src'in bazı p4a sürümlerinde
+# sessizce çalışmaması ihtimaline karşı). p4a_hook.py, build.py'ın
+# APK'yı derlemesinden hemen önce çalışır ve android_src/ içeriğini
+# doğrudan p4a'nın kendi Java kaynaklarıyla aynı klasöre kopyalar.
+p4a.hook = p4a_hook.py
 android.allow_backup = False
 
 # Android 12+ BLE izinleri
