@@ -9,12 +9,27 @@ requirements = python3,kivy,pyjnius
 orientation = portrait
 fullscreen = 0
 
-# Android 16 / API 36 hedefi
-android.api = 36
+# Kararlı ve iyi test edilmiş API/NDK sürümleri.
+# NOT: Çok yeni/az test edilmiş android.api veya android.ndk sürümleri,
+# python-for-android'in gradle şablonlarıyla uyumsuzluk riskini artırır ve
+# android.add_src ile eklenen özel Java sınıflarının derlemeye dahil
+# edilmemesine (ClassNotFoundException) yol açabilir.
+android.api = 34
 android.minapi = 26
-android.ndk = 28c
+android.ndk = 25b
 android.ndk_api = 26
 android.accept_sdk_license = True
+
+# ÖNEMLİ: android_src/ altındaki Java dosyaları paket hiyerarşisini
+# yansıtmalıdır (bu projede: android_src/com/example/virtualpogoplus/...).
+# Bu ayar doğrudur, ANCAK Buildozer, buildozer.spec/android_src
+# değişikliklerini var olan bir .buildozer derleme önbelleğine OTOMATİK
+# YANSITMAZ. android_src/ içeriğini veya bu dosyayı değiştirdikten sonra
+# MUTLAKA önce temiz bir derleme yapın, yoksa yeni Java sınıfı APK'ya
+# eklenmeden eski önbellek kullanılmaya devam eder ve pyjnius çalışma
+# zamanında "Didn't find class" hatası verir:
+#   buildozer appclean
+#   buildozer android debug
 android.add_src = android_src
 android.archs = arm64-v8a
 android.allow_backup = False
