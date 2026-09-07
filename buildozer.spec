@@ -30,7 +30,6 @@ android.accept_sdk_license = True
 # zamanında "Didn't find class" hatası verir:
 #   buildozer appclean
 #   buildozer android debug
-android.add_src = android_src
 android.archs = arm64-v8a
 
 # BlePeripheral.java gibi özel Java sınıflarının derlemeye kesin olarak
